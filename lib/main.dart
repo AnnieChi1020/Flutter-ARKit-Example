@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:arkit_plugin/arkit_plugin.dart';
 import 'package:vector_math/vector_math_64.dart';
@@ -6,27 +7,59 @@ void main() => runApp(MaterialApp(home: MyApp()));
 
 class MyApp extends StatefulWidget {
   @override
-  _MyAppState createState() => _MyAppState();
+  MyAppState createState() => MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
-  late ARKitController arkitController;
+class MyAppState extends State<MyApp> {
+  late ARKitController arKitController;
+  Timer? timer;
 
   @override
   void dispose() {
-    arkitController.dispose();
+    timer?.cancel();
+    arKitController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('ARKit in Flutter')),
-      body: ARKitSceneView(onARKitViewCreated: onARKitViewCreated));
+        appBar: AppBar(title: const Text('Earth Sample')),
+        body: ARKitSceneView(
+          // ARKit view 執行後，呼叫 onARKitViewCreated
+          onARKitViewCreated: onARKitViewCreated,
+        ),
+      );
 
-  void onARKitViewCreated(ARKitController arkitController) {
-    this.arkitController = arkitController;
+  void onARKitViewCreated(ARKitController arKitController) {
+    this.arKitController = arKitController;
+
+    // ARKitMaterial 用於決定幾何圖形的渲染方式；定義 3d 幾何外觀的顏色和紋理
+    final material = ARKitMaterial(
+      lightingModelName: ARKitLightingModel.lambert,
+      diffuse: ARKitMaterialProperty.image('images/earth.jpg'),
+    );
+
+    // ARKitSphere 用於創建球體
+    final sphere = ARKitSphere(
+      materials: [material],
+      radius: 0.1,
+    );
+
+    // ARKitNode 用於創建節點
     final node = ARKitNode(
-        geometry: ARKitSphere(radius: 0.1), position: Vector3(0, 0, -0.5));
-    this.arkitController.add(node);
+      geometry: sphere,
+      position: Vector3(0, 0, -0.5),
+      eulerAngles: Vector3.zero(),
+    );
+
+    // 將節點加入到 ARKitController 中
+    this.arKitController.add(node);
+
+    // 設定定時器，每 50 毫秒旋轉一次
+    timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      final rotation = node.eulerAngles;
+      rotation.x += 0.01;
+      node.eulerAngles = rotation;
+    });
   }
 }
